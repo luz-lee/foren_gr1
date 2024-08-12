@@ -4,30 +4,32 @@ from video import add_and_detect_watermark_video
 from detect import detect_watermark_image
 
 # Image Interface
-image_inputs = [
-    gr.Image(type="numpy", label="Upload Image"),
-    gr.Textbox(label="Watermark Text")
-]
-
-image_outputs = [
-    gr.Image(type="numpy", label="Watermarked Image"),
-    gr.Image(type="numpy", label="Watermark Highlight"),
-    gr.File(label="Download Watermarked Image"),
-    gr.File(label="Download Watermark Highlight")
-]
-
 def process_image(image, text):
-    watermarked_image, highlight, watermarked_image_path, highlight_path = add_and_detect_watermark_image(image, text)
-    return watermarked_image, highlight, watermarked_image_path, highlight_path
+    watermarked_image_path, highlight_path, positions, watermark_text = add_and_detect_watermark_image(image, text)
+    return watermarked_image_path, highlight_path, positions, watermark_text
 
 image_interface = gr.Interface(
     fn=process_image,
-    inputs=image_inputs,
-    outputs=image_outputs,
-    title="Image Watermark Application",
-    description="Upload an image and add a watermark text. Detect watermark and highlight its position."
+    inputs=[gr.Image(type="numpy", label="Upload Image"), gr.Textbox(label="Watermark Text")],
+    outputs=[gr.Image(label="Watermarked Image"), gr.Image(label="Watermark Highlight"),
+             gr.JSON(label="Watermark Positions"), gr.Textbox(label="Watermark Text")],
+    title="Image Watermark Application"
 )
 
+def process_detection(image, positions, text):
+    return detect_watermark_image(image, positions, text)
+
+detect_interface = gr.Interface(
+    fn=process_detection,
+    inputs=[gr.Image(type="numpy", label="Upload Image"), gr.JSON(label="Watermark Positions"), gr.Textbox(label="Watermark Text")],
+    outputs=[gr.Image(label="Detected Watermark"), gr.Textbox(label="Detected Text")],
+    title="Forensic Watermark Detection"
+)
+
+app = gr.TabbedInterface(
+    interface_list=[image_interface, detect_interface],
+    tab_names=["Image", "Detect"]
+)    
 # Video Interface
 video_inputs = [
     gr.Video(label="Upload Video"),
