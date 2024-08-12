@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import random
 import tempfile
 from utils import resize_image, text_to_image
 from PIL import Image
@@ -23,10 +22,12 @@ def add_and_detect_watermark_image(image, watermark_text, num_watermarks=5):
     rows, cols = dct_y.shape
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    for _ in range(num_watermarks):
+    # Use fixed positions to insert watermark
+    for i in range(num_watermarks):
+        np.random.seed(i)
         text_size = cv2.getTextSize(watermark_text, font, 0.5, 1)[0]
-        text_x = random.randint(0, cols - text_size[0])
-        text_y = random.randint(text_size[1], rows)
+        text_x = np.random.randint(0, cols - text_size[0])
+        text_y = np.random.randint(text_size[1], rows)
         watermark = np.zeros_like(dct_y)
         watermark = cv2.putText(watermark, watermark_text, (text_x, text_y), font, 0.5, (1, 1, 1), 1, cv2.LINE_AA)
         dct_y += watermark * 0.01
@@ -39,11 +40,7 @@ def add_and_detect_watermark_image(image, watermark_text, num_watermarks=5):
     ycrcb_merged = cv2.merge((idct_y, cr_channel, cb_channel))
 
     # Step 5: Convert back to BGR color space
-    try:
-        watermarked_image = cv2.cvtColor(ycrcb_merged, cv2.COLOR_YCrCb2BGR)
-    except cv2.error as e:
-        print(f"Error converting YCrCb to BGR: {e}")
-        raise
+    watermarked_image = cv2.cvtColor(ycrcb_merged, cv2.COLOR_YCrCb2BGR)
 
     # Step 6: Highlight watermark positions on the watermarked image
     watermark_highlight = watermarked_image.copy()
@@ -55,11 +52,11 @@ def add_and_detect_watermark_image(image, watermark_text, num_watermarks=5):
     watermarked_image_pil = Image.fromarray(cv2.cvtColor(watermarked_image, cv2.COLOR_BGR2RGB))
     watermark_highlight_pil = Image.fromarray(cv2.cvtColor(watermark_highlight, cv2.COLOR_BGR2RGB))
 
-    # Save images
+    # Save images explicitly as .png files
     _, watermarked_image_path = tempfile.mkstemp(suffix=".png")
     _, watermark_highlight_path = tempfile.mkstemp(suffix=".png")
 
-    watermarked_image_pil.save(watermarked_image_path)
-    watermark_highlight_pil.save(watermark_highlight_path)
+    watermarked_image_pil.save(watermarked_image_path, format="PNG")
+    watermark_highlight_pil.save(watermark_highlight_path, format="PNG")
 
-    return watermarked_image, watermark_highlight, watermarked_image_path, watermark_highlight_path
+    return watermarked_image_path, watermark_highlight_path, watermark_positions, watermark_text
